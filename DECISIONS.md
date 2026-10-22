@@ -314,3 +314,19 @@ A sweep of the shipped dataset found the prefix-hijack pattern also exists among
   population about 14K, under the 15K floor), so no curated hint clue
   was added for it. Offered as a curated below-floor exception like
   the Wien key; Niko decided: leave the dataset as is. No exception.
+
+- 2026-10-22: Web edition re-published at Niko's direction ("Do it" on
+  the Git route), reversing the Oct 19 move to private. The static
+  edition (slug geoquiz) was re-synced to the current private app:
+  restored Leaflet wiring, completion-shading dedupe, the suggestion
+  chip, the states counter, Hints (393 curated clues plus the
+  attribute layer), the zero-reserve visual-viewport keyboard layout,
+  tap-to-dismiss popups, and inert attribution text; the localStorage
+  shim now round-trips the hints setting (default on). Verified played
+  at 390px in the static edition's harness and reconciled from the
+  exported bundle: 34,112 rows, World 50K pool 12,381, US 50K 976,
+  US 25K 2,081, Burlington x3 and Springfield x6 rows. The export is
+  6,383,481 bytes (blob 00d18ee2). Because that file is over the
+  connector's practical push limit, index.html is published through
+  GitHub's web upload, and the visibility change back to public plus
+  the Pages re-enable are done in the browser, the reverse of Oct 19.
