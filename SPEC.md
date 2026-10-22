@@ -86,8 +86,11 @@ Mobile-first Muse app (fullstack, saves data). Clone of HugeQuiz World 50K+ City
   lines weight 2 / opacity 0.55, state lines 0.8 / 0.3. In country games the
   national outline is the dissolved union of the state polygons (shared edge
   exact, measured deviation 0). Completed regions shade light green
-  (admin_1 in country games, admin_0 in world/continent); regions/countries
-  with zero pool cities at the floor shade green from game start;
+  (admin_1 in country games, admin_0 in world/continent); countries
+  with zero pool cities at the floor shade green from game start in
+  world/continent games, while in country games a state with zero pool
+  cities shades only once the game is actually complete (2026-10-21,
+  superseding the from-start rule for states);
   out-of-scope countries shade grey at the same 0.22 opacity. Each admin_0
   feature shades at most once per game (feature-index dedupe, 2026-10-19):
   slugs that share one Natural Earth feature (France with Réunion,
