@@ -133,3 +133,184 @@
   apart) as distinct cities. Final dataset: 34,112 cities, 210
   countries (data/cities-final.json). Repo tagged pre-clean-data-
   2026-10-19 before the app swap, with a live state snapshot.
+
+- 2026-10-19: GeoQuiz published to GitHub as the public repo
+  nkavallar/geoquiz: the playable build (index.html), project docs, and
+  the GeoNames data pipeline. Excluded: the REA extraction, both
+  HugeQuiz-derived datasets, live state snapshots, and hidden_files.
+  The Muse GitHub app cannot create repositories (API 403, a platform
+  rule for app integrations), so the empty repo was created in the
+  browser as Niko on his instruction to create it myself. The connector
+  push transport rejects requests well below the documented 16 MiB
+  snapshot limit, so the publish landed in three parts: docs and
+  pipeline (53da327), the dataset (34d06fd), and index.html through
+  GitHub's web upload (1870f14). All 17 files verified byte-identical
+  (size and git blob SHA) after publishing.
+
+- 2026-10-19: GitHub Pages enabled on nkavallar/geoquiz (deploy from
+  main, root folder), so the published build is playable at
+  https://nkavallar.github.io/geoquiz/.
+
+- 2026-10-19 (later): nkavallar/geoquiz changed from public to private
+  at Niko's direction ("I don't want this public accessible"). Making
+  the repo private unpublished the GitHub Pages build with it; the
+  hosted URL now returns GitHub's 404. Repo contents unchanged.
+
+- 2026-10-19: Uneven green shading root-caused and fixed. shadedGeomsOf
+  pushed one geometry per completed or zero-pool slug via the city-vote
+  slugToFeature map, with no dedupe: France's Natural Earth feature is
+  shared by six slugs (france, reunion, martinique, french_guiana,
+  mayotte, guadeloupe) and composited to an effective 0.77 opacity in a
+  completed world game, Morocco's feature twice (morocco,
+  western_sahara) at 0.39, everything else once at 0.22. Found by
+  replaying the shipped logic offline against the shipped data after
+  Niko's report on his World 500K clear (1209/1210, 136/137 countries).
+  Fix: feature-index Set dedupe across both push loops, plus a
+  nearest-feature fallback (within 2.0 degrees of the slug's city
+  centroid) for the six slugs that voted for no feature (kiribati,
+  jersey, gibraltar, marshall_islands,
+  saint_vincent_and_the_grenadines, tonga). Gibraltar lands on Spain's
+  feature (no separate Gibraltar polygon at this fidelity), the same
+  accepted shared-feature pattern. Verified played at 390px with pixel
+  composites: France, Morocco, Spain all at the single-coat color, zero
+  pixels at the old stacked colors; a fresh world 500K game shades 69
+  distinct features from 73 zero-pool slugs. Separately, spelling
+  correction no longer auto-fires at Niko's direction: a correction win
+  shows one "Did you mean X?" chip above the guess input, tapping fires
+  through the corrected-fire path, any input change dismisses it, and
+  all existing gates are unchanged. Production state verified identical
+  after the build (best_scores 5, history 7, active_game null).
+
+- 2026-10-19: Map engine swapped from Leaflet (Web Mercator) to
+  MapLibre GL with a globe projection, at Niko's direction ("true scale
+  world map, not the Mercator"). MapLibre renders a true sphere zoomed
+  out and transitions toward flat Mercator at regional zoom, so world
+  view is undistorted and regional play is unchanged in feel. All layers
+  re-implemented: segment-mesh borders, deduped completion shading and
+  grey overlay, blast circles as geodesic destination-point rings (true
+  ground circles at any latitude), population-band pins, hit-marker
+  popups, end-screen reveals. maplibre-gl 5.24 is bundled, no runtime
+  CDN. One boot regression was caught by the build audit (setProjection
+  called before style load blanked the app) and fixed in the load
+  handler. Verification gap, stated plainly: the QA harness could not
+  capture in-play frames this round (software WebGL plus the sandbox
+  tile lockdown wedged the probe), so checks 1-8 are source-verified
+  only and the home screen is the only played frame; production data
+  verified identical. Niko's device is the deciding check; restore
+  point is tag good-suggest-opacity-2026-10-19.
+
+## 2026-10-20: Canonical prefix hijacks left faithful
+A sweep of the shipped dataset found the prefix-hijack pattern also exists among canonical city names themselves (145 of 1,842 in the US 25K pool: Jackson blocks Jacksonville, Pittsburg CA blocks Pittsburgh PA, Miami blocks Miami Beach/Gardens, Wichita blocks Wichita Falls, Dayton blocks Daytona Beach). The behavior is inherited verbatim from HugeQuiz, and longer names remain reachable by retyping after the short one fires. Decision (Niko, Oct 20, 2026): keep it faithful, do nothing. No pending-match guard. Do not re-raise.
+
+- 2026-10-21: Globe reverted. The MapLibre build's map did not load on
+  Niko's phone on 2026-10-19, and still did not load after the repair
+  build re-gated layer readiness from "load" to "style.load" (verified
+  in a local rig with tiles refused, but never with a painted frame:
+  the QA sandbox renders WebGL in software and cannot capture one).
+  Niko directed the revert ("Revert to previous map that actually
+  worked if this can't be fixed"); a fix that cannot be verified
+  before delivery does not count as fixable. GameMap.tsx was
+  re-implemented on Leaflet 1.9.4 to the good-suggest-opacity-2026-10-19
+  behavior (no Leaflet source snapshot existed; the segment-mesh
+  builder and the App.tsx dedupe logic carried over unchanged),
+  MapLibre removed entirely. Played verification: map paints in the
+  harness, uniform shading in play, suggestion chip pass, production
+  data field-identical including the unstarted World 500K slot.
+  Standing rule from this episode: the globe (or any WebGL map) does
+  not return unless its rendering can be proven before it reaches
+  Niko's phone.
+
+- 2026-10-21: The Leaflet revert was first done as a re-implementation
+  from spec and shipped with blast circles and pins not showing on
+  Niko's phone (the harness had verified layer counts, not visible
+  frames; he caught it and rejected being the QA loop). Root divergence,
+  found by decoding the surviving previous client (the share edition's
+  compiled code in github-export/index.html) and diffing it against the
+  re-implementation: the re-implementation invented four custom Leaflet
+  panes and nine per-class layer groups fed by three effects, inverted
+  hit-marker interactivity (popup on an inner dot instead of the r9
+  marker), used pure #0000FF circle fills, and rendered missed labels
+  as divIcon markers. The device-proven version uses no custom panes
+  and ONE overlay layerGroup rebuilt by a single effect in the order
+  grey, green, circles, pins, hits, missed, with fresh circles #2f6bff
+  at 0.25 fading to #9aa8f0 at 0.1 and missed labels as permanent
+  tooltips. The restore rebuilt the map layer from that recovered code;
+  App.tsx (dedupe, fallback, chip) untouched. Frame-verified at 390px:
+  Paris circle/marker/pins/shading visible, Burlington x3 and
+  Springfield x6 with markers, Denver circle visible, chip pass,
+  reload-resume visibly restored, end-screen labels visible. Only the
+  hit-marker popup TAP lacks frame evidence (the probe cannot tap
+  Leaflet paths by coordinate); its wiring is byte-identical to the
+  version Niko played for days. Rules from this episode: a revert
+  restores actual prior code, never a re-implementation from spec, and
+  rendering claims require inspected frames, not counters.
+
+- 2026-10-21: Hit-marker taps were dead on device after the restore.
+  Cause, proven by diffing against the share edition's compiled client:
+  a touch guard added during the restore called preventDefault() on
+  every touchstart over the map except controls and popups; the proven
+  build's guard also exempts .leaflet-interactive, and dropping that
+  one selector suppressed the click Leaflet needs to open a marker
+  popup (touch dead, mouse clicks fine, which is why no desktop-side
+  check caught it). Fix: restore the exemption, matching the proven
+  guard string exactly; the corrected selector is confirmed present in
+  the shipped bundle and the audit passed clean. Data untouched,
+  including Niko's in-progress World game.
+
+- 2026-10-21: Popup dismissal on empty-map tap fixed. Same root family
+  as the dead marker tap: the touch guard's preventDefault on
+  touchstart suppressed the synthesized click Leaflet's close-on-click
+  relies on, so on touch a popup only closed when another marker was
+  tapped (mouse clicks already closed it). The guard now records the
+  touchstart position, and a touchend that qualifies as a tap (within
+  12px, not a drag or pinch) outside controls, markers, and the popup
+  itself calls map.closePopup(). The .leaflet-interactive exemption is
+  preserved verbatim; audit pass; resumed-game frame shows the map
+  layer undisturbed; data untouched.
+
+- 2026-10-21 (evening): Niko reported borders again showing mixed
+  thicknesses and some states preselected green. Repair findings:
+  (1) Preselected green had two causes: border pool cities falling
+  just outside their state polygon (San Diego, El Paso, Laredo,
+  Brownsville, six more) were assigned to no region, letting states
+  complete without them; and zero-pool states shaded green from game
+  start under the Oct 19 zero-pool rule. Fix: unassigned pool cities
+  now take the nearest region, and zero-pool states shade only when
+  the game is actually complete (this supersedes the zero-pool
+  from-start rule for states; verified: a fresh US 100K game opens
+  with zero states green, and Texas stays unshaded until its three
+  border cities are fired, then shades). (2) Border thickness: the
+  mesh weld snap widened to 0.01 degrees and a side-coverage pass
+  reclassifies singly stored interior segments from country weight to
+  state weight; US misclassified interior length at country weight
+  fell from 10,545 km to zero, near-parallel sliver segments fell
+  from 110 to 14 (US), 29 to 6 (DE), 1,136 to 188 (world admin_0).
+  The thick bright dashes in Niko's view are gone in before/after
+  frames. Standing residual, disclosed: about 188 near-parallel
+  segments remain in the world mesh (about 3,732 km, mostly
+  wide-river bank pairs at uniform country weight) and 14 in the US
+  mesh at uniform weight; the build critic's P0 stands as improved,
+  not eliminated. Device confirmation still pending.
+
+- 2026-10-22: Hints feature shipped (settings toggle default on;
+  tap an empty spot in a state or country to get a Show hint offer;
+  clue targets the region's largest uncovered city; curated trivia
+  layer of 393 clues across 204 countries plus a runtime attribute
+  layer: capital status, largest-uncovered, rounded population,
+  compass position; Another cycles to the next-largest). Production
+  integrity verified field by field; the only settings change is
+  hints:true.
+- 2026-10-22: Hint popup flash fixed. The offer opens 240 ms after
+  the tap, and the same tap's trailing click echo (Leaflet preclick
+  plus synthesized mouse events) landed after the open and closed it.
+  The hint popup now sets closeOnClick off, the validated tap handler
+  cancels the touchend, mouse handlers drop touch-echo events, and a
+  tap within 700 ms at the hint anchor is treated as the opening
+  tap's echo. Dismissal still runs through the explicit tap path.
+  Verified in the shipped bundle and mechanism; the harness cannot
+  replay touch taps, so device proof is Niko's next tap.
+
+- 2026-10-22: St. Augustine, FL is absent from the dataset (GeoNames
+  population about 14K, under the 15K floor), so no curated hint clue
+  was added for it. Offered as a curated below-floor exception like
+  the Wien key; Niko decided: leave the dataset as is. No exception.

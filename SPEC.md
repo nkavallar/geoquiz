@@ -74,23 +74,38 @@ Mobile-first Muse app (fullstack, saves data). Clone of HugeQuiz World 50K+ City
 - Stats in a collapsible bottom sheet; end screen with missed markers and lists.
 - QA: full mobile pass at phone viewport before delivery, per standing artifact rules.
 
-## Current state (2026-10-18, at tag pre-contenteditable-2026-10-18)
+## Current state (2026-10-19, at tag good-suggest-opacity-2026-10-19)
 
 - Name: GeoQuiz (slug city-coverage-quiz unchanged; all saved data carried over).
-- Map: Leaflet + Esri World Imagery satellite, CARTO dark fallback. Borders
+- Map: Leaflet 1.9.4 + Esri World Imagery satellite, CARTO dark fallback.
+  (A MapLibre globe build shipped 2026-10-19 and was reverted 2026-10-21:
+  the map never loaded on Niko's phone, twice, and the sandbox cannot
+  verify a painted frame for it. Globe is parked; see DECISIONS.)
+  Borders
   from Natural Earth 10m for BOTH layers at 0.02° simplification: country
   lines weight 2 / opacity 0.55, state lines 0.8 / 0.3. In country games the
   national outline is the dissolved union of the state polygons (shared edge
   exact, measured deviation 0). Completed regions shade light green
   (admin_1 in country games, admin_0 in world/continent); regions/countries
   with zero pool cities at the floor shade green from game start;
-  out-of-scope countries shade grey at the same 0.22 opacity.
+  out-of-scope countries shade grey at the same 0.22 opacity. Each admin_0
+  feature shades at most once per game (feature-index dedupe, 2026-10-19):
+  slugs that share one Natural Earth feature (France with Réunion,
+  Martinique, French Guiana, Mayotte, Guadeloupe; Morocco with Western
+  Sahara; Spain with Gibraltar) shade that feature together, never stacked.
+  Slugs whose cities vote for no feature take the nearest feature within
+  2.0 degrees of their city centroid (Gibraltar, Jersey, Kiribati, Tonga,
+  Marshall Islands, St. Vincent and the Grenadines).
 - Matching: live per keystroke against primary + alias + GeoNames alternate
   keys; duplicate names multi-blast; covered-but-unfired cities can fire.
 - Spelling correction always on with guards (additions-only evaluation,
-  finishing-distance prefix safeguard, length-difference cap, substring ban);
-  every match shows a toast: city-only name + fired count ("✓ Springfield ×5");
-  corrected fires show the corrected spelling.
+  finishing-distance prefix safeguard, length-difference cap, substring ban).
+  Since 2026-10-19 a correction win SUGGESTS instead of firing: one
+  "Did you mean X?" chip above the guess input; tapping it fires through the
+  normal corrected-fire path, any input change dismisses it, and it never
+  appears for exact matches. Every fired match shows a toast: city-only name
+  + fired count ("✓ Springfield ×5"); corrected fires show the corrected
+  spelling.
 - Guess field: a contenteditable element, not a form control; during play the
   app mounts zero input/textarea/select elements.
 - HUD: two rows, merging into one compact row while the keyboard is open;

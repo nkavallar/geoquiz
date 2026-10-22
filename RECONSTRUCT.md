@@ -73,3 +73,53 @@ custom blast radius, saved scores/settings/history/resume.
   12 country slugs renamed with a stored-value remap). Attribution added:
   GeoNames CC BY 4.0. The spliced HugeQuiz-based dataset is retired from
   the app and kept in the repo as build history only.
+
+- 2026-10-19: published to GitHub as nkavallar/geoquiz (public). The
+  repo holds this project's github-export/ tree verbatim (game build,
+  docs, data pipeline); the sync ledger lives at
+  github-export.muse-github-snapshot-sync.json beside that tree.
+  Connector pushes go in batches of a few MB; the 6.1 MB index.html
+  went through GitHub's web upload after the connector returned
+  HTTP 413. All 17 published files verified byte-identical on read-back.
+
+- 2026-10-19: shading dedupe and correction-suggestion build verified
+  (tag good-suggest-opacity-2026-10-19; state snapshot
+  snapshots/state-2026-10-19-good-suggest-opacity.json). Green admin_0
+  shading now pushes each feature at most once per game; unmapped slugs
+  fall back to the nearest feature within 2.0 degrees. Correction wins
+  render a tappable suggestion chip instead of firing.
+
+- 2026-10-19: map engine is MapLibre GL (globe projection) as of this
+  build; Leaflet removed. Layer contracts unchanged (mesh borders,
+  deduped shading, geodesic blast circles, pins, popups). In-play
+  harness verification was not possible this round (WebGL/tile
+  lockdown); device verification pending. Restore point for the
+  Leaflet build: tag good-suggest-opacity-2026-10-19.
+
+- 2026-10-21: map engine reverted to Leaflet 1.9.4 (Web Mercator) after
+  the MapLibre globe failed to load on device twice. State snapshot
+  snapshots/state-2026-10-21-pre-revert.json; restore points:
+  good-suggest-opacity-2026-10-19 (Leaflet behavior spec),
+  globe-swap-2026-10-19 (the parked globe build record).
+
+- 2026-10-21: map layer restored from the previous version's compiled
+  client (share-edition export), replacing the failed re-implementation.
+  Single overlay layerGroup, default Leaflet panes, previous circle
+  colors and popup wiring. Tag: restored-leaflet-2026-10-21.
+
+- 2026-10-21: hit-marker popup taps fixed (touch guard .leaflet-
+  interactive exemption restored). Tag: hitmarker-tap-fix-2026-10-21.
+
+- 2026-10-21: popup dismissal on empty-map tap added to the touch
+  guard (tap detection, map.closePopup()). Tag:
+  popup-dismiss-2026-10-21.
+
+- 2026-10-21 (evening): border mesh reclassification (interior
+  segments to state weight, weld snap 0.01) and region-assignment fix
+  (nearest-region for out-of-polygon pool cities; zero-pool states
+  shade at game completion, not at start). Tag:
+  border-shading-fix-2026-10-21.
+
+- 2026-10-22: hints feature (toggle, region tap offer, two-layer
+  clues) and the hint-popup flash fix (closeOnClick off, touch-echo
+  suppression, 700 ms anchor grace). Tags: hints-2026-10-22.

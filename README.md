@@ -18,11 +18,20 @@ file), or on GitHub Pages if enabled for this repo.
   custom minutes, or no time limit).
 - Type a city name. Exact matches fire on the keystroke; duplicate names
   fire every city with that name at once. English and local spellings
-  both work (Munich and München), and spelling correction is forgiving
-  about typos. Misses give no feedback: a miss is a miss.
+  both work (Munich and München). A near-miss never fires on its own: it
+  offers a "Did you mean X?" chip, and the city fires only when you tap
+  the chip. Misses give no feedback: a miss is a miss.
 - Covered regions shade green as you complete them; countries outside
-  your scope sit under a grey overlay. Reaching 100% ends the game in a
-  win state.
+  your scope sit under a grey overlay. In a single-country game the
+  score line tracks completed states (for the US, "0/49 states" at the
+  50K floor); world and continent games track countries. Reaching 100%
+  ends the game in a win state.
+- Hints (on by default, toggle in Settings): tap an empty spot inside a
+  state or country and the game offers "Show hint". The clue describes
+  the largest city you are still missing there without naming it;
+  "Another" cycles to the next one. Famous places get a trivia clue
+  ("Oldest city in America"); the rest are built from the data (capital
+  status, size, position in the region).
 - Settings, best scores, history, and an in-progress game save in your
   browser (localStorage). Nothing leaves the device.
 
