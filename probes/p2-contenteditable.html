@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P2: contenteditable</title>
+<style>
+  body { background:#111; color:#eee; font-family:-apple-system, sans-serif; margin:0; padding:24px; font-size:20px; }
+  h1 { font-size:24px; }
+  .field { margin-top:30vh; }
+  [contenteditable] { font-size:24px; padding:18px; width:90%; box-sizing:border-box; border-radius:8px; border:1px solid #555; background:#222; color:#eee; min-height:30px; }
+  [contenteditable]:empty::before { content:"P2: contenteditable"; color:#888; }
+  a { color:#6db3ff; display:inline-block; padding:12px 0; }
+</style>
+</head>
+<body>
+<h1>P2</h1>
+<a href="index.html">Back to index</a>
+<div class="field">
+<div contenteditable="true"></div>
+</div>
+</body>
+</html>
