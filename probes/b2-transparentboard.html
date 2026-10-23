@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>r0-baseline</title>
+
+<style>html, body { margin:0; padding:0; height:100%; overflow:hidden; overscroll-behavior:none; background:#0d2f42; }
+#board { position:fixed; top:0; left:0; width:100%; background:transparent; }
+
+  #info { position:absolute; top:8px; left:8px; right:8px; color:#fff; font:12px/1.45 monospace; background:rgba(0,0,0,.55); padding:6px 8px; border-radius:8px; white-space:pre-wrap; }
+  #phase { position:absolute; top:8px; right:8px; transform:translateY(190px); font:14px monospace; padding:8px 10px; border-radius:8px; }
+  #ui { position:absolute; left:0; top:0; width:100%; pointer-events:none; }
+  #ui > * { pointer-events:auto; }
+  #bar { position:absolute; left:0; right:0; bottom:12px; display:flex; justify-content:center; }
+  input { width:min(80vw,24rem); font-size:17px; padding:12px 16px; border-radius:999px; border:1px solid rgba(255,255,255,.25); background:rgba(20,24,28,.75); color:#fff; text-align:center; }
+  #icb { position:absolute; top:0; bottom:0; left:0; width:3px; opacity:0; pointer-events:none; }
+  #fxs { position:fixed; top:0; bottom:0; right:0; width:3px; opacity:0; pointer-events:none; }
+  #paint { position:absolute; inset:0; overflow:hidden; }
+</style>
+</head>
+<body>
+<div id="board"><div id="paint"></div></div>
+
+<div id="icb"></div><div id="fxs"></div>
+<div id="ui"><div id="info">loading</div><button id="phase" type="button">swap pattern phase</button><div id="bar"><input id="t" type="text" placeholder="Type a city..." inputmode="text" enterkeyhint="go" autocorrect="off" autocapitalize="none" autocomplete="off" spellcheck="false"></div></div>
+<script>
+var TAGLINE = "B2 TRANSPARENT BOARD: R0 verbatim except board background transparent";
+window.BOARD_MODE = "h0";
+window.SPACER_H = 0;
+
+var $ = function(id){ return document.getElementById(id); };
+var phase = 0;
+function unitPx(u){ var d=document.createElement('div'); d.style.cssText='position:fixed;left:0;top:0;width:0;visibility:hidden;height:100'+u; document.body.appendChild(d); var v=d.getBoundingClientRect().height; d.remove(); return Math.round(v*10)/10; }
+function samplerH0(){ var vv=window.visualViewport; var cands=[window.innerHeight, document.documentElement.clientHeight, unitPx('lvh')]; if(vv){ cands.push(vv.height + vv.offsetTop); } return Math.max.apply(null, cands); }
+function HG(){ return Math.max(window.screen.height, unitPx('lvh'), window.innerHeight, document.documentElement.clientHeight) + 256; }
+function buildPattern(el, H){
+  el.innerHTML='';
+  var colors=['#00e5ff','#ffee00','#ff2fd6','#00e676','#ff6d00','#2979ff'];
+  for(var y=0; y<H; y+=80){ var b=document.createElement('div'); b.style.cssText='position:absolute;left:0;right:0;top:'+y+'px;height:80px;background:'+colors[(y/80)%colors.length]+';color:#000;font:bold 22px monospace;overflow:hidden;';
+    var left = (phase===0) ? '###' : '@@@';
+    var right = (phase===0) ? '@@@' : '###';
+    b.textContent = left+' y='+y+' '+right+' y='+y+' '+left;
+    el.appendChild(b); }
+  var m=document.createElement('div'); m.style.cssText='position:absolute;left:8px;top:'+(H-46)+'px;background:#fff;color:#000;font:bold 20px monospace;padding:2px 8px;'; m.textContent='BOTTOM y='+H; el.appendChild(m);
+}
+function rectStr(r){ return r ? ('['+Math.round(r.left)+','+Math.round(r.top)+','+Math.round(r.width)+'x'+Math.round(r.height)+']') : 'n/a'; }
+function show(tag){
+  var vv=window.visualViewport, de=document.documentElement, se=document.scrollingElement;
+  var lines=[TAGLINE, tag,
+   'inner='+window.innerWidth+'x'+window.innerHeight,
+   'client='+de.clientWidth+'x'+de.clientHeight,
+   'vv='+(vv? (Math.round(vv.width*10)/10)+'x'+(Math.round(vv.height*10)/10)+' off='+Math.round(vv.offsetLeft)+','+Math.round(vv.offsetTop)+' page='+Math.round(vv.pageLeft)+','+Math.round(vv.pageTop)+' scale='+vv.scale : 'n/a'),
+   'screen='+window.screen.width+'x'+window.screen.height+' dpr='+window.devicePixelRatio,
+   'scroll='+window.scrollX+','+window.scrollY+' rangeH='+(se? se.scrollHeight : 'n/a'),
+   'lvh='+unitPx('lvh')+' dvh='+unitPx('dvh')+' svh='+unitPx('svh'),
+   'H0='+samplerH0()+' HG='+HG(),
+   'icbSent='+rectStr($('icb').getBoundingClientRect()),
+   'fixSent='+rectStr($('fxs').getBoundingClientRect()),
+   'board='+rectStr($('board').getBoundingClientRect()),
+   'paint='+rectStr($('paint').getBoundingClientRect())];
+  $('info').textContent = lines.join('\n');
+  placeUI();
+}
+function placeUI(){
+  var vv=window.visualViewport; var ui=$('ui');
+  var top = vv ? vv.pageTop : 0; var left = vv ? vv.pageLeft : 0;
+  var h = vv ? vv.height : window.innerHeight;
+  ui.style.top = top+'px'; ui.style.left = left+'px'; ui.style.height = h+'px';
+}
+function init(){
+  var H = HG();
+  var b=$('board'); if(window.BOARD_MODE==='h0'){ b.style.height = samplerH0()+'px'; } else if(window.BOARD_MODE==='hg'){ b.style.height = H+'px'; }
+  var sp=$('spacer'); if(sp){ sp.style.height = window.SPACER_H + 'px'; }
+  buildPattern($('paint'), Math.max(H, 1400));
+  $('phase').addEventListener('pointerdown', function(e){ e.preventDefault(); phase = 1-phase; buildPattern($('paint'), Math.max(HG(),1400)); show('phase '+phase); });
+  var t=$('t');
+  t.addEventListener('focus', function(){ show('on focus'); setTimeout(function(){show('focus +500ms');},500); setTimeout(function(){show('focus +1500ms');},1500); });
+  t.addEventListener('blur', function(){ setTimeout(function(){show('after blur');},400); });
+  window.addEventListener('resize', function(){ show('resize'); });
+  window.addEventListener('scroll', function(){ show('scroll'); }, {passive:true});
+  if(window.visualViewport) visualViewport.addEventListener('resize', function(){ show('vv resize'); });
+  window.addEventListener('pageshow', function(){ show('pageshow'); });
+  show('on load'); setTimeout(function(){ show('load +1500ms'); },1500);
+}
+document.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+</html>
