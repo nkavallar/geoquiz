@@ -112,7 +112,7 @@ Mobile-first Muse app (fullstack, saves data). Clone of HugeQuiz World 50K+ City
   spelling.
 - Guess field: a contenteditable element, not a form control; during play the
   app mounts zero input/textarea/select elements. It renders as a centered
-  floating pill (width min(88vw, 26rem)) in the HUD-pill material (translucent
+  floating pill (width min(80vw, 24rem)) in the HUD-pill material (translucent
   dark fill, backdrop blur, same border); typed text and the
   "Type a city..." placeholder are center-aligned.
 - HUD: two rows, merging into one compact row while the keyboard is open;
