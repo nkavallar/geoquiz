@@ -126,8 +126,8 @@ Mobile-first Muse app (fullstack, saves data). Clone of HugeQuiz World 50K+ City
   a position:fixed background layer overshooting the viewport by
   construction: top:-20%, bottom:-20%, left:0, right:0 (CSS percentages
   only; no JavaScript sizing, no pixel constants, no frozen pixel frame).
-  There is NO JavaScript viewport measurement for sizing or positioning:
-  no sampler, no probe elements, no viewport-geometry listeners. The one
+  There is NO JavaScript viewport measurement for board or map sizing:
+  no sampler, no probe elements, no frozen pixel frame. The one board
   exception is framing: at map initialization only, GameMap reads the
   board's rect once, computes the top/bottom overshoot against the layout
   height, stores it, and the initial fitBounds uses
