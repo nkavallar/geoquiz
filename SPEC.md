@@ -115,30 +115,40 @@ Mobile-first Muse app (fullstack, saves data). Clone of HugeQuiz World 50K+ City
   floating pill (width min(80vw, 24rem)) in the HUD-pill material (translucent
   dark fill, backdrop blur, same border); typed text and the
   "Type a city..." placeholder are center-aligned.
-- HUD: two rows, merging into one compact row while the keyboard is open;
-  the board's height comes from CSS only: `.game-board` declares
-  `height: 100dvh` and then `height: 100lvh` (lvh wins where supported), and
-  the JS sampler no longer sets the board's height (2026-10-23 fallback
-  round, superseding the sampler-set height of the same day's coverage fix:
-  on real Safari the sampler's JS sources may all report the visual height,
-  and Leaflet's cached size may not follow a JS-grown board). The sampler
-  still measures the layout, visual, and largest viewport heights, but only
-  to compute the strip offset that lifts the interactive layers and to feed
-  the diagnostic readout. Leaflet's invalidateSize fires at every settle
-  moment (initial settle, window resize, orientationchange, visualViewport
-  resize, and the 100/350/700 ms keyboard focus-transition backstops) so its
-  cached size follows the CSS-sized board. Every interactive
-  element stays anchored to the visualViewport rect: bottom-anchored elements
-  lift by the strip between the visual bottom and the board bottom, and the
-  map fills the whole board including that strip, in both keyboard states.
-  The html and body backgrounds are solid #0d2f42 (deep ocean teal) as a
-  fallback seam for any residual sliver the map cannot cover (the space-root
-  stays transparent), and a theme-color meta (#0d2f42) is kept for hosts that
-  still read it. The input layer is a transparent overlay anchored to the board's
-  bottom and the map fills the whole board behind it, so the pill, the match
-  toast, and the suggestion chip float over the map in both keyboard states
-  (no solid band; 2026-10-22 redesign matching Safari's floating pills). There is no End button in the input row: ending a game
-  runs through the Pause sheet's "End quiz" action. Circles and pins
+- HUD: two rows, merging into one compact row while the keyboard is open
+  (compactness derives from a closed visual-height reference, not the map
+  frame). The map surface is a FROZEN frame (2026-10-23 rebuild, Astra
+  design as amended): height = max(window.screen.height, the 100lvh
+  measure, window.innerHeight, documentElement.clientHeight at init) + 256,
+  measured once before first focus (two equal nonzero rAF reads) and set as
+  explicit pixels; the surface is position:fixed at top -128 (half the
+  allowance), so painted content extends past both the top and bottom
+  layout edges; geometry epochs occur only on width change, orientation
+  change, or host-frame change, never on keyboard, toolbar, focus, or
+  visual-viewport events. Leaflet runs with trackResize off and receives
+  invalidateSize exactly once per genuine epoch change, never from
+  viewport/keyboard/focus events, and viewport events never move the
+  camera. A flat canvas presenter (FlatTileSurface) draws Leaflet's
+  already-loaded tile images at their measured rects while the tile pane
+  stays visibility:hidden, so the satellite layer is one untransformed
+  paint surface; vectors, popups, and controls keep their Leaflet
+  behavior, with popups kept reachable by a viewport adapter that never
+  pans the camera. All interactive elements live on a separate visible-UI
+  surface positioned in document coordinates from the visualViewport rect,
+  so controls track the visible area while the map frame never moves.
+  Initial scope framing compensates for the overshoot: the visible layout
+  rect inside the surface starts at y=128 with height = the 100lvh measure
+  at init, and fitBounds pads accordingly (paddingTopLeft [0, 128],
+  paddingBottomRight for the bottom overshoot). The html and body
+  backgrounds are solid #0d2f42 (deep ocean teal) as a fallback seam only
+  (loading/error), the space-root stays transparent, and a theme-color
+  meta (#0d2f42) is kept for hosts that still read it. The input layer is
+  a transparent overlay on the visible-UI surface and the map fills the
+  whole surface behind it, so the pill, the match toast, and the
+  suggestion chip float over the map in both keyboard states (no solid
+  band; 2026-10-22 redesign matching Safari's floating pills). There is
+  no End button in the input row: ending a game runs through the Pause
+  sheet's "End quiz" action. Circles and pins
   non-interactive except hit markers (tap shows name popup).
 - Region counter (HUD sub-line, keyboard-merged HUD, stats sheet, end
   summary): the denominator is every admin_1 region of the country (every
@@ -156,6 +166,6 @@ Mobile-first Muse app (fullstack, saves data). Clone of HugeQuiz World 50K+ City
 - Versioning: see VERSIONING.md (commit per verified round, tag before risky
   changes, getstate snapshots at every tag).
 
-Layer structure (2026-10-23): the play/end board renders as a direct child of document.body (React portal, outside the space root), and the Leaflet container is the board's direct child: no intermediate wrapper element and no CSS isolation on the container. The sizing, strip, and anchoring rules above are unchanged.
+Layer structure (2026-10-23 rebuild): body holds the SDK/React root, the .cq-map-surface as a direct child (React portal) containing canvas.cq-satellite-paint (the visible satellite pixels) and the transparent .cq-leaflet-engine (tile pane hidden once loaded; overlay, tooltip, and popup panes live), a .cq-map-dimmer mounted only for modal states at the same frozen frame, and the separate .cq-visible-ui surface holding the HUD, readout, Leaflet control slots, guess pill and chips, and sheets/dialogs. No sampler, no strip offsets, no per-state board resizing.
 
-Diagnostic readout (temporary, 2026-10-23 fallback round): a small monospace readout below the counter pill on the play screen shows live layout height, visual height, board client height, strip px, and Leaflet container client height (format "L844 V469 B844 S375 M844"), read from the build's own sampler/geometry and updated at the settle moments. It is diagnostic instrumentation for the keyboard-band question and is removed once that question closes.
+Diagnostic readout (temporary, 2026-10-23 rebuild): a small monospace readout on the play screen, three lines. Line 1: L (raw documentElement.clientHeight), V (visualViewport.height), B (map-surface clientHeight), S (L minus V, signed, diagnostic only), M (Leaflet container clientHeight). Line 2: C (map.getSize().y), F (frozen SurfaceFrame height), P (satellite canvas CSS height), O (visualViewport.offsetTop), T (surface top offset). Line 3: cumulative transition counters SIZEΔ, CACHEΔ, INVALIDATE, RESIZE, NEWTILES, CAMERAΔ, which must stay zero across keyboard cycles. Expected on the owner's Safari: L836 with B=M=C=F=P about 1212 and T-128; in the Muse app: L757 with B=M=C=F=P equal to the frozen frame. The readout is removed once the owner confirms the rebuild on device.
