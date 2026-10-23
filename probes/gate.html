@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0d2f42">
+<title>GeoQuiz Gate A: paint-path validation</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  html, body { margin:0; padding:0; height:100%; overflow:hidden; overscroll-behavior:none; background:#0d2f42; }
+  body { position:static; font-family:-apple-system, system-ui, sans-serif; }
+
+  /* Stand-in for the production SDK/React root (.hatch-space-root). The map
+     surface below is a sibling body child, exactly like the production portal. */
+  #approot { position:relative; z-index:0; color:#8fa3b8; font:12px/1.5 monospace; padding:8px; }
+
+  /* Frozen-frame measurement element: the ONLY use of lvh in this page. */
+  #measure { position:fixed; left:0; top:0; width:100lvw; height:100lvh; visibility:hidden; pointer-events:none; z-index:-1; }
+
+  /* .cq-map-surface: fixed, direct body child, explicit frozen pixel size.
+     No flex, no transform, no backdrop filter, no paint containment. */
+  .cq-map-surface { position:fixed; top:0; left:0; background:transparent; z-index:10; overflow:hidden; }
+  .cq-satellite-paint { position:absolute; inset:0; width:100%; height:100%; display:block; pointer-events:none; z-index:0; }
+  .cq-leaflet-engine { position:absolute; inset:0; width:100%; height:100%; z-index:1; }
+  .cq-map-surface .leaflet-container { background:transparent; }
+  #patternDiv { position:absolute; inset:0; overflow:hidden; z-index:5; display:none; }
+
+  /* Visible UI: absolute in DOCUMENT coordinates, follows visualViewport only.
+     It never resizes or moves the map surface. */
+  #ui { position:absolute; z-index:20; pointer-events:none; }
+  #ui > * { pointer-events:auto; }
+  #readout { position:absolute; top:8px; left:8px; max-width:74%; color:#fff; font:11px/1.5 monospace; background:rgba(0,0,0,.62); padding:6px 8px; border-radius:8px; white-space:pre-wrap; pointer-events:none; }
+  #stageBtns { position:absolute; top:8px; right:8px; display:flex; flex-direction:column; gap:6px; }
+  #stageBtns button { font:13px monospace; padding:7px 10px; border-radius:8px; border:1px solid rgba(255,255,255,.35); background:rgba(20,24,28,.8); color:#fff; }
+  #stageBtns button.on { background:#2f6bff; border-color:#2f6bff; }
+  #phaseBtn { position:absolute; right:8px; top:46%; font:13px monospace; padding:8px 10px; border-radius:8px; border:1px solid rgba(255,255,255,.35); background:rgba(20,24,28,.8); color:#fff; }
+
+  /* Stage-5 HUD chip + guess pill, mirroring the production materials. */
+  #pillZone { position:absolute; left:0; right:0; bottom:12px; display:none; flex-direction:column; align-items:center; gap:8px; }
+  #counterChip { background:rgba(11,15,20,.88); border:1px solid #26313d; -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); color:#e8eef5; border-radius:999px; padding:5px 14px; font:13px monospace; }
+  #attribChip { color:rgba(232,238,245,.75); font:10px monospace; }
+  .cq-guess-input { background:rgba(118,118,128,.35); border:1px solid rgba(255,255,255,.14); -webkit-backdrop-filter:blur(20px) saturate(1.6); backdrop-filter:blur(20px) saturate(1.6); border-radius:999px; width:min(80%,24rem); padding:12px 16px; text-align:center; font-size:16px; color:#e8eef5; }
+  .cq-guess-input:focus { outline:2px solid rgba(143,163,184,.55); outline-offset:2px; }
+  .cq-guess-input:empty::before { content:attr(data-placeholder); color:rgba(235,235,245,.55); pointer-events:none; }
+</style>
+</head>
+<body>
+<div id="approot">stand-in app root (production: .hatch-space-root + React root). The map surface is a sibling body child, as in production.</div>
+<div id="measure"></div>
+
+<div class="cq-map-surface" id="surface">
+  <canvas class="cq-satellite-paint" id="paint"></canvas>
+  <div class="cq-leaflet-engine" id="engine"></div>
+  <div id="patternDiv"></div>
+</div>
+
+<div id="ui">
+  <div id="readout">measuring frozen frame…</div>
+  <div id="stageBtns">
+    <button type="button" data-stage="1">S1</button>
+    <button type="button" data-stage="2">S2</button>
+    <button type="button" data-stage="3">S3</button>
+    <button type="button" data-stage="4">S4</button>
+    <button type="button" data-stage="5">S5</button>
+  </div>
+  <button id="phaseBtn" type="button">phase / nudge</button>
+  <div id="pillZone">
+    <div id="counterChip">0 / 12,381</div>
+    <!-- The guess field mirrors the production play screen exactly:
+         a contenteditable div, NOT an <input>; zero form controls on the
+         page, so no host shell gets a form control to hang an accessory
+         bar on. Same attributes and keyboard-relevant handlers as App.tsx. -->
+    <div id="guess" contenteditable role="textbox" aria-label="Type a city name"
+         aria-placeholder="Type a city…" data-placeholder="Type a city…"
+         autocapitalize="none" autocorrect="off" spellcheck="false"
+         inputmode="text" enterkeyhint="go" class="cq-guess-input"></div>
+    <div id="attribChip">Esri, Maxar, Earthstar Geographics</div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+'use strict';
+var $ = function(id){ return document.getElementById(id); };
+var ESRI_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+var ESRI_ATTRIBUTION = 'Esri, Maxar, Earthstar Geographics';
+var VIEW = { lat: 37.72, lng: -122.45, zoom: 12 }; /* San Francisco Bay / peninsula coast */
+
+var frame = null;        /* the frozen SurfaceFrame: set once, never mutated */
+var stage = 0;
+var phase = 0;
+var note = '';
+
+/* ---------- Frozen frame: measure 100lvw x 100lvh, two equal rAF reads ---- */
+function initFrame(done){
+  var el = $('measure'), last = null, stable = 0, guard = 0;
+  function tick(){
+    var r = el.getBoundingClientRect();
+    var w = Math.round(r.width), h = Math.round(r.height);
+    if (w > 0 && h > 0 && last && last.w === w && last.h === h) stable++; else stable = 0;
+    last = { w: w, h: h };
+    if (stable >= 1 || ++guard > 120) {
+      frame = Object.freeze({ epoch: 1, width: last.w, height: last.h, dpr: window.devicePixelRatio || 1 });
+      applyFrame();
+      done();
+    } else requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+function applyFrame(){
+  var s = $('surface');
+  s.style.width = frame.width + 'px';
+  s.style.height = frame.height + 'px';
+  var c = $('paint');
+  c.width = Math.round(frame.width * frame.dpr);
+  c.height = Math.round(frame.height * frame.dpr);
+  var ctx = c.getContext('2d');
+  ctx.setTransform(frame.dpr, 0, 0, frame.dpr, 0, 0);
+}
+
+/* ---------- Visible UI placement: visual viewport only, rAF coalesced ---- */
+var uiRaf = 0;
+function placeUI(){
+  var vv = window.visualViewport, ui = $('ui');
+  var left = vv ? vv.pageLeft : 0, top = vv ? vv.pageTop : 0;
+  var w = vv ? vv.width : window.innerWidth, h = vv ? vv.height : window.innerHeight;
+  ui.style.left = left + 'px'; ui.style.top = top + 'px';
+  ui.style.width = w + 'px'; ui.style.height = h + 'px';
+}
+function scheduleUI(){
+  if (uiRaf) return;
+  uiRaf = requestAnimationFrame(function(){ uiRaf = 0; placeUI(); updateReadout(); });
+}
+if (window.visualViewport) {
+  visualViewport.addEventListener('resize', scheduleUI);
+  visualViewport.addEventListener('scroll', scheduleUI);
+}
+window.addEventListener('resize', scheduleUI);
+window.addEventListener('pageshow', scheduleUI);
+
+/* ---------- Diagnostics readout (design section 6) ------------------------ */
+function num(v){ return (v === null || v === undefined || isNaN(v)) ? '-' : String(Math.round(v)); }
+function updateReadout(){
+  if (!frame) return;
+  var vv = window.visualViewport, de = document.documentElement;
+  var L = de.clientHeight, V = vv ? vv.height : null;
+  var B = $('surface').clientHeight;
+  var S = (V === null) ? null : L - V;
+  var M = map ? $('engine').clientHeight : null;
+  var C = map ? map.getSize().y : null;
+  var P = $('paint').clientHeight;
+  var O = vv ? vv.offsetTop : null;
+  $('readout').textContent =
+    'GATE A · STAGE S' + stage + (phase ? ' · phase 1' : ' · phase 0') + '\n' +
+    'L' + num(L) + ' V' + num(V) + ' B' + num(B) + ' S' + num(S) + ' M' + num(M) + '\n' +
+    'C' + num(C) + ' F' + num(frame.height) + ' P' + num(P) + ' O' + num(O) +
+    (note ? '\n' + note : '');
+}
+/* ---------- The R0 asymmetric phase-swapping labeled-band pattern --------
+   Same design as gen_probes.py buildPattern: 80px bands, loud rotating
+   colors, ###/@@@ markers swapping sides per phase, y= labels, and a
+   BOTTOM marker. Real content vs sampled tint vs stale snapshot stay
+   distinguishable because a phase swap must visibly swap the markers. */
+var BAND_COLORS = ['#00e5ff','#ffee00','#ff2fd6','#00e676','#ff6d00','#2979ff'];
+function buildPatternDiv(){
+  var el = $('patternDiv'); el.innerHTML = '';
+  var H = frame.height;
+  for (var y = 0; y < H; y += 80) {
+    var b = document.createElement('div');
+    b.style.cssText = 'position:absolute;left:0;right:0;top:' + y + 'px;height:80px;background:' +
+      BAND_COLORS[(y / 80) % BAND_COLORS.length] + ';color:#000;font:bold 22px monospace;overflow:hidden;';
+    var left = (phase === 0) ? '###' : '@@@';
+    var right = (phase === 0) ? '@@@' : '###';
+    b.textContent = left + ' y=' + y + ' ' + right + ' y=' + y + ' ' + left;
+    el.appendChild(b);
+  }
+  var m = document.createElement('div');
+  m.style.cssText = 'position:absolute;left:8px;top:' + (H - 46) + 'px;background:#fff;color:#000;font:bold 20px monospace;padding:2px 8px;';
+  m.textContent = 'BOTTOM y=' + H;
+  el.appendChild(m);
+}
+function drawPatternCanvas(){
+  var ctx = $('paint').getContext('2d');
+  var W = frame.width, H = frame.height;
+  ctx.save();
+  ctx.globalAlpha = 1;
+  ctx.clearRect(0, 0, W, H);
+  ctx.font = 'bold 22px monospace';
+  ctx.textBaseline = 'middle';
+  for (var y = 0; y < H; y += 80) {
+    ctx.fillStyle = BAND_COLORS[(y / 80) % BAND_COLORS.length];
+    ctx.fillRect(0, y, W, 80);
+    ctx.fillStyle = '#000';
+    var left = (phase === 0) ? '###' : '@@@';
+    var right = (phase === 0) ? '@@@' : '###';
+    ctx.fillText(left + ' y=' + y, 4, y + 40);
+    var rw = ctx.measureText(right + ' y=' + y).width;
+    ctx.fillText(right + ' y=' + y, W - rw - 4, y + 40);
+    ctx.fillText(left, W / 2 - 20, y + 40);
+  }
+  ctx.font = 'bold 20px monospace';
+  var label = 'BOTTOM y=' + H;
+  var lw = ctx.measureText(label).width;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(8, H - 46, lw + 16, 30);
+  ctx.fillStyle = '#000';
+  ctx.fillText(label, 16, H - 31);
+  ctx.restore();
+}
+
+/* ---------- S3: Esri tiles drawn into the canvas WITHOUT Leaflet --------- */
+var s3token = 0;
+function lng2px(lng, z){ return (lng + 180) / 360 * 256 * Math.pow(2, z); }
+function lat2px(lat, z){ var s = Math.sin(lat * Math.PI / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * 256 * Math.pow(2, z); }
+function drawEsriManual(){
+  var token = ++s3token;
+  var ctx = $('paint').getContext('2d');
+  var W = frame.width, H = frame.height;
+  ctx.save(); ctx.globalAlpha = 1; ctx.clearRect(0, 0, W, H); ctx.restore();
+  var z = VIEW.zoom;
+  var cx = lng2px(VIEW.lng, z), cy = lat2px(VIEW.lat, z);
+  var tlX = cx - W / 2, tlY = cy - H / 2;
+  var x0 = Math.floor(tlX / 256), x1 = Math.floor((tlX + W - 1) / 256);
+  var y0 = Math.floor(tlY / 256), y1 = Math.floor((tlY + H - 1) / 256);
+  var total = (x1 - x0 + 1) * (y1 - y0 + 1), loaded = 0, failed = 0;
+  note = 'S3 tiles 0/' + total; updateReadout();
+  for (var ty = y0; ty <= y1; ty++) {
+    for (var tx = x0; tx <= x1; tx++) {
+      (function(tx, ty){
+        var img = new Image();
+        img.onload = function(){
+          if (token !== s3token || stage !== 3) return;
+          var c2 = $('paint').getContext('2d');
+          c2.save(); c2.globalAlpha = 1;
+          c2.drawImage(img, tx * 256 - tlX, ty * 256 - tlY);
+          c2.restore();
+          loaded++; note = 'S3 tiles ' + loaded + '/' + total + (failed ? ' (' + failed + ' failed)' : ''); updateReadout();
+        };
+        img.onerror = function(){ if (token === s3token) { failed++; note = 'S3 tiles ' + loaded + '/' + total + ' (' + failed + ' failed)'; updateReadout(); } };
+        img.src = ESRI_URL.replace('{z}', z).replace('{y}', ty).replace('{x}', tx);
+      })(tx, ty);
+    }
+  }
+}
+
+/* ---------- S4/S5: Leaflet engine + FlatTileSurface --------------------- */
+var map = null, tileLayer = null, flat = null, vectors = null;
+
+function effectiveOpacity(el){
+  var a = 1, n = el;
+  while (n && n !== $('engine')) { var o = parseFloat(getComputedStyle(n).opacity); if (!isNaN(o)) a *= o; n = n.parentElement; }
+  return a;
+}
+function makeFlatTileSurface(mapObj, layer, canvas){
+  var raf = 0, disposed = false, observer = null, zoomLoop = false;
+  function collectAndDraw(){
+    raf = 0;
+    if (disposed) return;
+    var canvasRect = canvas.getBoundingClientRect();
+    var container = layer.getContainer();
+    if (!container) return;
+    /* Measure everything BEFORE drawing (design section 3). */
+    var items = [];
+    var levels = Array.prototype.slice.call(container.children);
+    levels.sort(function(a, b){ return (parseInt(a.style.zIndex, 10) || 0) - (parseInt(b.style.zIndex, 10) || 0); });
+    levels.forEach(function(level){
+      var imgs = level.querySelectorAll('img');
+      for (var i = 0; i < imgs.length; i++) {
+        var img = imgs[i];
+        if (!img.complete || img.naturalWidth === 0) continue;
+        var r = img.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) continue;
+        items.push({ img: img, x: r.left - canvasRect.left, y: r.top - canvasRect.top, w: r.width, h: r.height, a: effectiveOpacity(img) });
+      }
+    });
+    var ctx = canvas.getContext('2d');
+    ctx.save();
+    ctx.clearRect(0, 0, frame.width, frame.height);
+    items.forEach(function(it){
+      ctx.globalAlpha = it.a;
+      ctx.drawImage(it.img, it.x, it.y, it.w, it.h);
+    });
+    ctx.restore();
+  }
+  function schedule(){
+    if (disposed || raf) return;
+    raf = requestAnimationFrame(collectAndDraw);
+  }
+  function zoomFrame(){
+    if (disposed) return;
+    collectAndDraw();
+    if (zoomLoop) requestAnimationFrame(zoomFrame);
+  }
+  function onZoomAnim(){ if (!zoomLoop) { zoomLoop = true; requestAnimationFrame(zoomFrame); } }
+  function onZoomEnd(){ zoomLoop = false; schedule(); }
+  function onTile(){ schedule(); }
+  function onLoad(){
+    /* Initial presentation succeeded: hide ONLY the source tile pane.
+       visibility (not display) keeps elements laid out and images loaded. */
+    mapObj.getPanes().tilePane.style.visibility = 'hidden';
+    schedule();
+  }
+  layer.on('tileload', onTile);
+  layer.on('tileunload', onTile);
+  layer.on('load', onLoad);
+  mapObj.on('move', schedule);
+  mapObj.on('movestart', schedule);
+  mapObj.on('moveend', schedule);
+  mapObj.on('viewreset', schedule);
+  mapObj.on('zoomanim', onZoomAnim);
+  mapObj.on('zoomend', onZoomEnd);
+  observer = new MutationObserver(schedule);
+  observer.observe(mapObj.getPanes().tilePane, { attributes: true, attributeFilter: ['style', 'class'], subtree: true });
+  return {
+    present: schedule,
+    dispose: function(){
+      disposed = true;
+      if (raf) cancelAnimationFrame(raf);
+      layer.off('tileload', onTile); layer.off('tileunload', onTile); layer.off('load', onLoad);
+      mapObj.off('move', schedule); mapObj.off('movestart', schedule); mapObj.off('moveend', schedule);
+      mapObj.off('viewreset', schedule); mapObj.off('zoomanim', onZoomAnim); mapObj.off('zoomend', onZoomEnd);
+      if (observer) observer.disconnect();
+    }
+  };
+}
+
+function ensureMap(){
+  if (map) {
+    if (map.getPanes().tilePane.style.visibility === 'hidden') { note = 'S4/S5: tile pane hidden; canvas presents Leaflet tiles'; }
+    flat.present();
+    return;
+  }
+  var ctx = $('paint').getContext('2d');
+  ctx.save(); ctx.globalAlpha = 1; ctx.clearRect(0, 0, frame.width, frame.height); ctx.restore();
+  note = 'S4/S5: loading Esri tiles via Leaflet…'; updateReadout();
+  map = L.map($('engine'), { trackResize: false, zoomControl: false, attributionControl: false });
+  map.setView([VIEW.lat, VIEW.lng], VIEW.zoom);
+  tileLayer = L.tileLayer(ESRI_URL, { attribution: ESRI_ATTRIBUTION, maxZoom: 18 });
+  flat = makeFlatTileSurface(map, tileLayer, $('paint'));
+  tileLayer.addTo(map);
+  tileLayer.on('load', function(){ note = 'S4/S5: tile pane hidden; canvas presents Leaflet tiles'; updateReadout(); });
+  /* No invalidateSize is ever called from any viewport/keyboard/focus
+     listener in this page: the frame is frozen (design section 2). */
+}
+function teardownMap(){
+  if (vectors) { vectors.forEach(function(v){ map.removeLayer(v); }); vectors = null; }
+  if (flat) { flat.dispose(); flat = null; }
+  if (map) { map.remove(); map = null; tileLayer = null; }
+  var ctx = $('paint').getContext('2d');
+  ctx.save(); ctx.globalAlpha = 1; ctx.clearRect(0, 0, frame.width, frame.height); ctx.restore();
+}
+function addVectors(){
+  if (!map || vectors) return;
+  var blast = L.circle([37.78, -122.42], { radius: 9000, color: '#2f6bff', weight: 2, fillColor: '#2f6bff', fillOpacity: 0.25 });
+  var poly = L.polygon([[37.85, -122.52], [37.90, -122.35], [37.78, -122.30], [37.72, -122.45]], { color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.22 });
+  blast.addTo(map); poly.addTo(map);
+  vectors = [blast, poly];
+}
+function removeVectors(){
+  if (vectors && map) vectors.forEach(function(v){ map.removeLayer(v); });
+  vectors = null;
+}
+
+/* ---------- Stage switching ---------------------------------------------- */
+function setStage(n){
+  stage = n;
+  var btns = document.querySelectorAll('#stageBtns button');
+  btns.forEach(function(b){ b.classList.toggle('on', parseInt(b.getAttribute('data-stage'), 10) === n); });
+  $('patternDiv').style.display = (n === 1) ? 'block' : 'none';
+  $('pillZone').style.display = (n === 5) ? 'flex' : 'none';
+  note = '';
+  if (n === 1) { if (map) teardownMap(); s3token++; buildPatternDiv(); }
+  if (n === 2) { if (map) teardownMap(); s3token++; drawPatternCanvas(); }
+  if (n === 3) { if (map) teardownMap(); drawEsriManual(); }
+  if (n === 4) { s3token++; removeVectors(); ensureMap(); }
+  if (n === 5) { s3token++; ensureMap(); addVectors(); }
+  placeUI();
+  updateReadout();
+}
+document.querySelectorAll('#stageBtns button').forEach(function(b){
+  b.addEventListener('click', function(){ setStage(parseInt(b.getAttribute('data-stage'), 10)); });
+});
+$('phaseBtn').addEventListener('pointerdown', function(e){
+  e.preventDefault();
+  phase = 1 - phase;
+  if (stage === 1) buildPatternDiv();
+  else if (stage === 2) drawPatternCanvas();
+  else if ((stage === 4 || stage === 5) && map) map.panBy(phase ? [37, 23] : [-37, -23]);
+  updateReadout();
+});
+
+/* Guess field handlers: mirror App.tsx (Enter never inserts a line break;
+   paste is plain-text only). */
+$('guess').addEventListener('keydown', function(e){ if (e.key === 'Enter') e.preventDefault(); });
+$('guess').addEventListener('paste', function(e){
+  e.preventDefault();
+  var text = (e.clipboardData || window.clipboardData).getData('text/plain');
+  if (document.queryCommandSupported && document.queryCommandSupported('insertText')) document.execCommand('insertText', false, text);
+});
+
+/* Boot: freeze the frame BEFORE any field can be used, then stage S1. */
+initFrame(function(){
+  placeUI();
+  setStage(1);
+  setInterval(updateReadout, 1000);
+});
+</script>
+</body>
+</html>
