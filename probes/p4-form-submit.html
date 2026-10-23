@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P4: form plus submit button</title>
+<style>
+  body { background:#111; color:#eee; font-family:-apple-system, sans-serif; margin:0; padding:24px; font-size:20px; }
+  h1 { font-size:24px; }
+  p { line-height:1.5; }
+  .field { margin-top:16px; }
+  input { font-size:24px; padding:18px; width:90%; box-sizing:border-box; border-radius:8px; border:1px solid #555; background:#222; color:#eee; display:block; margin-bottom:16px; }
+  [contenteditable] { font-size:24px; padding:18px; width:90%; box-sizing:border-box; border-radius:8px; border:1px solid #555; background:#222; color:#eee; min-height:30px; }
+  [contenteditable]:empty::before { content:"P2"; color:#888; }
+  button { font-size:22px; padding:14px 24px; border-radius:8px; border:1px solid #555; background:#333; color:#eee; }
+</style>
+</head>
+<body>
+<h1>P4</h1>
+<p>Tap the field and type abc. Note whether the bar with ^ v and a checkmark appears above the keyboard, and whether the arrows look enabled or greyed.</p>
+<div class="field">
+<form>
+<input type="text" inputmode="text" enterkeyhint="go" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="P1">
+<button type="submit">P4 submit</button>
+</form>
+</div>
+</body>
+</html>
