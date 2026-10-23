@@ -86,11 +86,12 @@ Mobile-first Muse app (fullstack, saves data). Clone of HugeQuiz World 50K+ City
   lines weight 2 / opacity 0.55, state lines 0.8 / 0.3. In country games the
   national outline is the dissolved union of the state polygons (shared edge
   exact, measured deviation 0). Completed regions shade light green
-  (admin_1 in country games, admin_0 in world/continent); countries
-  with zero pool cities at the floor shade green from game start in
-  world/continent games, while in country games a state with zero pool
-  cities shades only once the game is actually complete (2026-10-21,
-  superseding the from-start rule for states);
+  (admin_1 in country games, admin_0 in world/continent). A region or
+  country with zero pool cities at the floor counts as complete from
+  game start and shades grey instead (the out-of-scope grey, #8b9096 at
+  0.22, following the borders toggle), never green (2026-10-22, Niko;
+  supersedes both the from-start-green rule and the 2026-10-21 rule that
+  zero-pool states shade only once the game is actually complete);
   out-of-scope countries shade grey at the same 0.22 opacity. Each admin_0
   feature shades at most once per game (feature-index dedupe, 2026-10-19):
   slugs that share one Natural Earth feature (France with Réunion,
@@ -114,6 +115,15 @@ Mobile-first Muse app (fullstack, saves data). Clone of HugeQuiz World 50K+ City
 - HUD: two rows, merging into one compact row while the keyboard is open;
   board sized from visualViewport; input bar owns the bottom edge; circles and
   pins non-interactive except hit markers (tap shows name popup).
+- Region counter (HUD sub-line, keyboard-merged HUD, stats sheet, end
+  summary): the denominator is every admin_1 region of the country (every
+  country in scope for world/continent games; world = 210), and the numerator
+  counts fully covered regions plus zero-pool regions, which count from game
+  start (and shade grey, above). US exception: the District of Columbia is
+  excluded from the counter entirely, so the US denominator is 50; DC cities
+  stay in the pool, DC shades normally, and covering DC never moves the
+  counter (2026-10-22, Niko: "50, 50 states"). Labels: "states" in country
+  scope, "countries" in world/continent scope.
 - Setup: scope (World / continent / country via a searchable picker, United
   States pinned first and preselected), population floor 15K-1M, radius in miles
   (10/25/50/100/250/500/1000), timer classic/custom/no-limit with a 100% win
