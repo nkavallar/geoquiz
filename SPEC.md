@@ -116,11 +116,17 @@ Mobile-first Muse app (fullstack, saves data). Clone of HugeQuiz World 50K+ City
   dark fill, backdrop blur, same border); typed text and the
   "Type a city..." placeholder are center-aligned.
 - HUD: two rows, merging into one compact row while the keyboard is open;
-  board sized from visualViewport; the input layer is a transparent overlay
-  anchored to the board's bottom and the map fills the whole board behind it,
-  so the pill, the match toast, and the suggestion chip float over the map in
-  both keyboard states (no solid band; 2026-10-22 redesign matching Safari's
-  floating pills). There is no End button in the input row: ending a game
+  the board extends to the full layout viewport height (window.innerHeight)
+  while every interactive element stays anchored to the visualViewport rect:
+  bottom-anchored elements lift by the strip between the visual bottom and
+  the layout bottom, and the map fills the whole board including that strip,
+  the zone the host floats its domain/accessory pills over when the keyboard
+  is open (2026-10-22 strip fix). html/body/root backgrounds are transparent
+  and a theme-color meta (#0d2f42, deep ocean teal) is the host-chrome blend
+  fallback. The input layer is a transparent overlay anchored to the board's
+  bottom and the map fills the whole board behind it, so the pill, the match
+  toast, and the suggestion chip float over the map in both keyboard states
+  (no solid band; 2026-10-22 redesign matching Safari's floating pills). There is no End button in the input row: ending a game
   runs through the Pause sheet's "End quiz" action. Circles and pins
   non-interactive except hit markers (tap shows name popup).
 - Region counter (HUD sub-line, keyboard-merged HUD, stats sheet, end
