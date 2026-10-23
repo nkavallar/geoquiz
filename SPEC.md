@@ -111,10 +111,18 @@ Mobile-first Muse app (fullstack, saves data). Clone of HugeQuiz World 50K+ City
   + fired count ("✓ Springfield ×5"); corrected fires show the corrected
   spelling.
 - Guess field: a contenteditable element, not a form control; during play the
-  app mounts zero input/textarea/select elements.
+  app mounts zero input/textarea/select elements. It renders as a centered
+  floating pill (width min(88vw, 26rem)) in the HUD-pill material (translucent
+  dark fill, backdrop blur, same border); typed text and the
+  "Type a city..." placeholder are center-aligned.
 - HUD: two rows, merging into one compact row while the keyboard is open;
-  board sized from visualViewport; input bar owns the bottom edge; circles and
-  pins non-interactive except hit markers (tap shows name popup).
+  board sized from visualViewport; the input layer is a transparent overlay
+  anchored to the board's bottom and the map fills the whole board behind it,
+  so the pill, the match toast, and the suggestion chip float over the map in
+  both keyboard states (no solid band; 2026-10-22 redesign matching Safari's
+  floating pills). There is no End button in the input row: ending a game
+  runs through the Pause sheet's "End quiz" action. Circles and pins
+  non-interactive except hit markers (tap shows name popup).
 - Region counter (HUD sub-line, keyboard-merged HUD, stats sheet, end
   summary): the denominator is every admin_1 region of the country (every
   country in scope for world/continent games; world = 210), and the numerator
