@@ -117,22 +117,31 @@ Mobile-first Muse app (fullstack, saves data). Clone of HugeQuiz World 50K+ City
   "Type a city..." placeholder are center-aligned.
 - HUD: two rows, merging into one compact row while the keyboard is open
   (the merge is driven purely by a max-height:540px CSS media query).
-  The game screen is an ordinary webpage (2026-10-23 plain-fullscreen
-  rebuild, on the owner's directive: the map "should just be full screen
-  background like any webpage, the nav keyboard and other items are the
-  overlay"). The board is a normal in-flow element filling the page
-  through the CSS height chain (html and body height:100%, the chain
-  carried down through the SDK root's wrappers; the wrapper gets a
-  definite height and flex column only while the board is present, via
-  :has(> .game-board)). There is NO JavaScript viewport measurement of
-  any kind: no sampler, no frozen frame, no probe elements, no
-  viewport-geometry listeners; no element's size or position is computed
-  from JS metrics. The Leaflet container fills the board via CSS
-  (height:100%) and Leaflet presents its own tiles normally (tile pane
-  visible, no canvas presenter), with default resize behavior
-  (trackResize on, no geometry invalidateSize machinery). Initial scope
-  framing is the plain fitBounds with [18,18] padding. All interactive
-  elements are CSS-positioned overlays above the map. The html and body
+  The game screen is a locked background page (2026-10-23
+  locked-background rebuild, on the owner's reaffirmed model: the map is a
+  full-screen background like any webpage and the nav, keyboard, and other
+  items are overlays; a background does not scroll away when an overlay
+  opens). The document cannot scroll: html and body are height:100% with
+  overflow:hidden and overscroll-behavior:none. The board (.game-board) is
+  a position:fixed background layer overshooting the viewport by
+  construction: top:-20%, bottom:-20%, left:0, right:0 (CSS percentages
+  only; no JavaScript sizing, no pixel constants, no frozen pixel frame).
+  There is NO JavaScript viewport measurement for sizing or positioning:
+  no sampler, no probe elements, no viewport-geometry listeners. The one
+  exception is framing: at map initialization only, GameMap reads the
+  board's rect once, computes the top/bottom overshoot against the layout
+  height, stores it, and the initial fitBounds uses
+  paddingTopLeft [18, 18+topOvershoot] / paddingBottomRight [18,
+  18+bottomOvershoot] so the visible framing is the layout rect's framing,
+  identical to a layout-sized board; the stored values are reused for
+  later framing and never recomputed, and hit/hint popups carry autoPan
+  padding with the same overshoots. The Leaflet container fills the board
+  via CSS (height:100%) and Leaflet presents its own tiles normally (tile
+  pane visible, no canvas presenter), with default resize behavior. All
+  interactive elements are CSS-positioned overlays anchored to the LAYOUT
+  rect (position:fixed), not to the oversize board's edges; Leaflet's
+  bottom controls are lifted by calc(84px + 100%/7) so they keep their
+  visible spot above the input pill. The html and body
   backgrounds are solid #0d2f42 (deep ocean teal) as a fallback seam only
   (loading/error), the space-root stays transparent, and a theme-color
   meta (#0d2f42) is kept for hosts that still read it. The input layer is
@@ -159,6 +168,6 @@ Mobile-first Muse app (fullstack, saves data). Clone of HugeQuiz World 50K+ City
 - Versioning: see VERSIONING.md (commit per verified round, tag before risky
   changes, getstate snapshots at every tag).
 
-Layer structure (2026-10-23 plain-fullscreen rebuild): ordinary document flow. The board (.game-board) is a normal in-flow element inside the React tree (no portal), filled by the CSS height:100% chain; the Leaflet container fills the board via CSS and presents its own tiles (default panes and layer order as in the device-proven Leaflet build). HUD pills, the region strip, the diagnostic readout, Leaflet's controls, the guess pill and feedback chips, the match toast, and the sheets/dialogs with their dimmer are CSS-positioned overlays above the map. No measured stage of any kind: no sampler, no strip offsets, no frozen frame, no canvas presenter, no visible-UI surface, no per-state board resizing.
+Layer structure (2026-10-23 locked-background rebuild): the document is scroll-locked (html, body height:100%, overflow:hidden, overscroll-behavior:none). The board (.game-board) is a position:fixed background layer (top:-20%, bottom:-20%, left:0, right:0) inside the React tree (no portal); the Leaflet container fills the board via CSS and presents its own tiles (default panes and layer order as in the device-proven Leaflet build). HUD pills, the region strip, the diagnostic readout, the guess pill and feedback chips, the match toast, and the sheets/dialogs with their dimmer are overlays anchored to the layout rect via position:fixed; Leaflet's bottom controls are compensated with calc(84px + 100%/7). No measured stage: no sampler, no strip offsets, no frozen frame, no canvas presenter, no visible-UI surface, no per-state board resizing; the single JS geometry read is the init-only framing overshoot described above.
 
-Diagnostic readout (temporary, 2026-10-23 plain-fullscreen rebuild): a small monospace one-line readout on the play screen, display only: L (raw documentElement.clientHeight), V (visualViewport.height), B (board clientHeight), S (L minus V), M (Leaflet container clientHeight). Its values never feed any layout, sizing, or positioning. Expected on the owner's Safari: all five equal in the keyboard-closed state. The readout is removed once the owner confirms this build on device.
+Diagnostic readout (temporary, 2026-10-23 locked-background rebuild): a small monospace one-line readout on the play screen, display only: L (raw documentElement.clientHeight), V (visualViewport.height), B (board clientHeight), S (L minus V), M (Leaflet container clientHeight). Its values never feed any layout, sizing, or positioning. B and M read the oversize board (about 1.4 times L); L, V, and S behave as before. The readout is removed once the owner confirms this build on device.
