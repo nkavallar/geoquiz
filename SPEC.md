@@ -116,14 +116,25 @@ Mobile-first Muse app (fullstack, saves data). Clone of HugeQuiz World 50K+ City
   dark fill, backdrop blur, same border); typed text and the
   "Type a city..." placeholder are center-aligned.
 - HUD: two rows, merging into one compact row while the keyboard is open;
-  the board extends to the full layout viewport height (window.innerHeight)
-  while every interactive element stays anchored to the visualViewport rect:
-  bottom-anchored elements lift by the strip between the visual bottom and
-  the layout bottom, and the map fills the whole board including that strip,
-  the zone the host floats its domain/accessory pills over when the keyboard
-  is open (2026-10-22 strip fix). html/body/root backgrounds are transparent
-  and a theme-color meta (#0d2f42, deep ocean teal) is the host-chrome blend
-  fallback. The input layer is a transparent overlay anchored to the board's
+  the board's height comes from CSS only: `.game-board` declares
+  `height: 100dvh` and then `height: 100lvh` (lvh wins where supported), and
+  the JS sampler no longer sets the board's height (2026-10-23 fallback
+  round, superseding the sampler-set height of the same day's coverage fix:
+  on real Safari the sampler's JS sources may all report the visual height,
+  and Leaflet's cached size may not follow a JS-grown board). The sampler
+  still measures the layout, visual, and largest viewport heights, but only
+  to compute the strip offset that lifts the interactive layers and to feed
+  the diagnostic readout. Leaflet's invalidateSize fires at every settle
+  moment (initial settle, window resize, orientationchange, visualViewport
+  resize, and the 100/350/700 ms keyboard focus-transition backstops) so its
+  cached size follows the CSS-sized board. Every interactive
+  element stays anchored to the visualViewport rect: bottom-anchored elements
+  lift by the strip between the visual bottom and the board bottom, and the
+  map fills the whole board including that strip, in both keyboard states.
+  The html and body backgrounds are solid #0d2f42 (deep ocean teal) as a
+  fallback seam for any residual sliver the map cannot cover (the space-root
+  stays transparent), and a theme-color meta (#0d2f42) is kept for hosts that
+  still read it. The input layer is a transparent overlay anchored to the board's
   bottom and the map fills the whole board behind it, so the pill, the match
   toast, and the suggestion chip float over the map in both keyboard states
   (no solid band; 2026-10-22 redesign matching Safari's floating pills). There is no End button in the input row: ending a game
@@ -144,3 +155,7 @@ Mobile-first Muse app (fullstack, saves data). Clone of HugeQuiz World 50K+ City
   state; won games close and never offer resume.
 - Versioning: see VERSIONING.md (commit per verified round, tag before risky
   changes, getstate snapshots at every tag).
+
+Layer structure (2026-10-23): the play/end board renders as a direct child of document.body (React portal, outside the space root), and the Leaflet container is the board's direct child: no intermediate wrapper element and no CSS isolation on the container. The sizing, strip, and anchoring rules above are unchanged.
+
+Diagnostic readout (temporary, 2026-10-23 fallback round): a small monospace readout below the counter pill on the play screen shows live layout height, visual height, board client height, strip px, and Leaflet container client height (format "L844 V469 B844 S375 M844"), read from the build's own sampler/geometry and updated at the settle moments. It is diagnostic instrumentation for the keyboard-band question and is removed once that question closes.
