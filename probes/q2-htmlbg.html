@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Q2 html background</title>
+<style>
+  html { margin:0; padding:0; background:#ff2fd6; }
+  body { margin:0; padding:0; background:transparent; }
+  #board { position:fixed; inset:0; background:#123a52; }
+  #info { position:fixed; top:10px; left:10px; right:10px; color:#fff; font:14px/1.5 monospace; background:rgba(0,0,0,.45); padding:8px 10px; border-radius:10px; white-space:pre-wrap; }
+  #bar { position:fixed; left:0; right:0; bottom:12px; display:flex; justify-content:center; }
+  input { width:min(80vw,24rem); font-size:17px; padding:12px 16px; border-radius:999px; border:1px solid rgba(255,255,255,.25); background:rgba(118,118,128,.35); color:#fff; text-align:center; }
+</style>
+</head>
+<body>
+<div id="board"></div>
+<div id="info">Q2 HTML BACKGROUND = MAGENTA</div>
+<div id="bar"><input id="t" type="text" placeholder="Type here" inputmode="text" enterkeyhint="go" autocorrect="off" autocapitalize="none" spellcheck="false"></div>
+<script>
+  var info = document.getElementById('info');
+  function probe(h) { var d = document.createElement('div'); d.style.cssText = 'position:fixed;left:0;top:0;width:10px;visibility:hidden;height:' + h; document.body.appendChild(d); var v = d.getBoundingClientRect().height; d.remove(); return v; }
+  function show(tag) {
+    var vv = window.visualViewport;
+    info.textContent = 'Q2 HTML BACKGROUND = MAGENTA (if the band above the keyboard turns magenta, the html canvas background owns it)\n' + tag +
+      '\ninnerHeight=' + window.innerHeight +
+      '\nclientHeight=' + document.documentElement.clientHeight +
+      '\nvv.height=' + (vv ? vv.height : 'n/a') +
+      '\nvv.offsetTop=' + (vv ? vv.offsetTop : 'n/a') +
+      '\n100lvh=' + probe('100lvh') +
+      '\n100dvh=' + probe('100dvh') +
+      '\n100svh=' + probe('100svh');
+  }
+  document.getElementById('t').addEventListener('focus', function(){ show('on focus'); setTimeout(function(){ show('focus +700ms'); }, 700); });
+  if (window.visualViewport) visualViewport.addEventListener('resize', function(){ show('vv resize'); });
+  show('on load');
+</script>
+</body>
+</html>
